@@ -23,7 +23,7 @@
                         />
                         <CInputCheckbox
                         label="Merge all after download"
-                        :checked="true"
+                        :checked.sync="merge"
                         />
                     </CCardBody>
                     <!--CCardFooter>
@@ -61,7 +61,7 @@ export default {
     data(){
         return{
             urls:'',
-            merge:'',
+            merge:true,
             notDownloaded:true,
             message:'',
             fixedToasts:0,
@@ -96,6 +96,9 @@ export default {
         ipcRenderer.on('download-complete',(e,msg)=>{
            this.handleSuccess(msg);
            this.notDownloaded = false;
+           if(this.merge){
+               this.handleMerge();
+           }
         })
         ipcRenderer.on('Merge-complete',(e,msg)=>{
             this.handleSuccess(msg);

@@ -6,22 +6,26 @@ const glob=require('glob');
 const path = require('path');
 const exec = require('child_process').exec;
 
-const pathToDownloads = 'C:\\Users\\Chinm\\Downloads';
+
+const pathToDownloads = `${process.env.HOME}\\Downloads`;
 const pathToAll =`${pathToDownloads}\\YTvideo`;
 const pathToMerged = `${pathToDownloads}\\YTvideoMerged`;
 
-
+if(!fs.existsSync('intermediate')){
+    fs.mkdirSync('intermediate')
+}
 
 async function mergeVideos(inputVideos,pathToMerged,e){
     var ffmpeger = "";
     ffmpeger = inputVideos.map(video => 
-    `ffmpeg -y -i ${video} -c copy -bsf:v h264_mp4toannexb -f mpegts intermediate_${path.parse(video).name}.ts`).join("&&");
+    `ffmpeg -y -i ${video} -c copy -bsf:v h264_mp4toannexb -f mpegts intermediate/${path.parse(video).name}.ts`).join("&&");
     var concatenator = '"concat:';
-    concatenator += inputVideos.map(video =>`intermediate_${path.parse(video).name}.ts`).join("|");
+    concatenator += inputVideos.map(video =>`intermediate/${path.parse(video).name}.ts`).join("|");
     concatenator+='"';
     var mergecmd = `ffmpeg -y -i ${concatenator} -c copy -bsf:a aac_adtstoasc ${pathToMerged}\\output.mp4`;
     exec(`${ffmpeger}&&${mergecmd}`,(err, stdout, stderr) => {
         if(err) {
+            console.log(err);
             e.sender.send('Error','Error while merging')
             return
         };
@@ -41,7 +45,8 @@ ipcMain.on('download-all',(e,urlList)=>{
         ).pipe(fs.createWriteStream(`${pathToAll}\\${vid}.mp4`))
         e.sender.send('download-progress',[eachVideo*(i+1),100])
     }
-    e.sender.send('download-complete','All video downloaded successfuly')
+    e.sender.send('download-complete','All videos downloaded successfuly')
+        
 })
 
 ipcMain.on('merge',(e,arg)=>{
