@@ -7,9 +7,9 @@ const path = require('path');
 const exec = require('child_process').exec;
 
 
-const pathToDownloads = `${process.env.HOME}\\Downloads`;
-const pathToAll =`${pathToDownloads}\\YTvideo`;
-const pathToMerged = `${pathToDownloads}\\YTvideoMerged`;
+const pathToDownloads = process.platform === 'win32'?`${process.env.HOME}\\Downloads`:`${process.env.HOME}/Downloads`;
+const pathToAll = process.platform === 'win32'?`${pathToDownloads}\\YTvideo`:`${pathToDownloads}/YTvideo`;;
+const pathToMerged = process.platform === 'win32'?`${pathToDownloads}\\YTvideoMerged`:`${pathToDownloads}/YTvideoMerged`;
 
 if(!fs.existsSync('intermediate')){
     fs.mkdirSync('intermediate')
@@ -22,7 +22,8 @@ async function mergeVideos(inputVideos,pathToMerged,e){
     var concatenator = '"concat:';
     concatenator += inputVideos.map(video =>`intermediate/${path.parse(video).name}.ts`).join("|");
     concatenator+='"';
-    var mergecmd = `ffmpeg -y -i ${concatenator} -c copy -bsf:a aac_adtstoasc ${pathToMerged}\\output.mp4`;
+    var outputName = inputVideos.map(video=> path.parse(video).name).join("+")
+    var mergecmd = `ffmpeg -y -i ${concatenator} -c copy -bsf:a aac_adtstoasc ${pathToMerged}\\${outputName}.mp4`;
     exec(`${ffmpeger}&&${mergecmd}`,(err, stdout, stderr) => {
         if(err) {
             console.log(err);
@@ -34,18 +35,30 @@ async function mergeVideos(inputVideos,pathToMerged,e){
 }
 
 
+function downloadAll(e,pathToAll,urlList){
+    let task = []
+    let videoId = []
+    urlList.forEach(url => {
+        task.push(ytdl(url,{ format:'mp4' }))
+        videoId.push(path.parse(url).name.split('=')[1])
+    })
+    Promise.all(task)
+        .then(res=>{
+            res.forEach((item,index)=>{
+               item.pipe(fs.createWriteStream(`${pathToAll}\\${videoId[index]}.mp4`))
+            })
+            e.sender.send('download-complete',`Downloaded ${urlList.length} videos successfuly`)
+        })
+        .catch((err)=>{
+            console.log(err) 
+        })
+}
+
 ipcMain.on('download-all',(e,urlList)=>{
     if(!fs.existsSync(pathToAll)){
         fs.mkdirSync(pathToAll)
     }
-    var eachVideo = 100/urlList.length;
-    for(let i =0;i<urlList.length;++i){
-        let vid = path.parse(urlList[i]).name.split('=')[1]
-        ytdl(urlList[i],{ format:'mp4' }
-        ).pipe(fs.createWriteStream(`${pathToAll}\\${vid}.mp4`))
-        e.sender.send('download-progress',[eachVideo*(i+1),100])
-    }
-    e.sender.send('download-complete','All videos downloaded successfuly')
+    downloadAll(e,pathToAll,urlList);
         
 })
 

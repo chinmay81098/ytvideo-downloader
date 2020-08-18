@@ -72,12 +72,19 @@ export default {
     methods:{
         handleDownload(){
             var urlList = this.urls.split(',')
+            var UniqueUrlList = urlList.filter((item,index)=>urlList.indexOf(item) === index)
+            const re = /^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$/;
+            var filteredUrlList = UniqueUrlList.filter(url=>re.test(url))
             if (this.urls === ""){
                 this.fixedToasts++;
                 this.message = "URL field cannot be empty"
             }
+            else if(!filteredUrlList.length){
+                this.fixedToasts++
+                this.message = "Invalid URL's"
+            }
             else{
-                ipcRenderer.send('download-all',urlList)
+                ipcRenderer.send('download-all',filteredUrlList)
             }
         },
         handleMerge(){
