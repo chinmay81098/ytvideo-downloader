@@ -7,12 +7,12 @@ const exec = require("child_process").exec;
 var vidList = [];
 if (require("os").platform() === "win32") {
   const pathToDownloads = `${process.env.HOME}\\Downloads`;
-  var pathToAll = `${pathToDownloads}\\YTvideo2\\`;
-  var pathToMerged = `${pathToAll}\\YTvideoMerged2/`;
+  var pathToAll = `${pathToDownloads}\\YTvideo\\`;
+  var pathToMerged = `${pathToAll}\\YTvideoMerged/`;
 } else {
   const pathToDownloads = `${process.env.HOME}/Downloads`;
-  var pathToAll = `${pathToDownloads}/YTvideo1/`;
-  var pathToMerged = `${pathToAll}/YTvideoMerged1/`;
+  var pathToAll = `${pathToDownloads}/YTvideo/`;
+  var pathToMerged = `${pathToAll}/YTvideoMerged/`;
 }
 
 if (!fs.existsSync("intermediate")) {
