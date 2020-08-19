@@ -6,7 +6,7 @@
 
 <script>
   export default {
-    name: 'ytvideo-downloader'
+    name: 'ytvideo-merge'
   }
 </script>
 
