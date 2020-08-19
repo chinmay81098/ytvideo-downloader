@@ -17,7 +17,7 @@
                         <CTextarea
                         required
                         label="Paste URL's Here"
-                        placeholder="paste youtube video url"
+                        :placeholder="sampleURL"
                         rows=10
                         v-model="urls"
                         />
@@ -26,7 +26,7 @@
                         :checked.sync="merge"
                         />
                     </CCardBody>
-                    <!--CCardFooter>
+                    <CCardFooter v-if="onDownload">
                          <CProgress
                             :value="precentage"
                             color="success"
@@ -37,7 +37,7 @@
                             style="height:20px;"
                             class="mt-1"
                             />
-                    </CCardFooter-->
+                    </CCardFooter>
                 </CCard>
             </CCol>
             <CCol sm="6">
@@ -67,6 +67,10 @@ export default {
             fixedToasts:0,
             precentage:0,
             ratio:0,
+            onDownload:false,
+            total:0,
+            downloaded:0,
+            sampleURL:`//https://www.youtube.com/watch?v=1TR9riaDzY8,https://www.youtube.com/watch?v=d-UU_lyqcFg,https://www.youtube.com/watch?v=Uw5JOtvFd-k`
         }
     },
     methods:{
@@ -84,6 +88,7 @@ export default {
                 this.message = "Invalid URL's"
             }
             else{
+                this.onDownload = true;
                 ipcRenderer.send('download-all',filteredUrlList)
             }
         },
@@ -91,8 +96,12 @@ export default {
             ipcRenderer.send('merge')
         },
         displayPercentage(bytes_downloaded,bytes_total){
-            this.ratio = bytes_downloaded/bytes_total
+            this.ratio = (this.downloaded+bytes_downloaded)/(this.total+bytes_total)
             this.precentage = Math.round(this.ratio*100,2);
+            if(this.precentage === 100){
+                this.downloaded+=bytes_downloaded
+                this.total+=bytes_total
+            }
         },
         handleSuccess(msg){
             this.fixedToasts++;
@@ -103,6 +112,10 @@ export default {
         ipcRenderer.on('download-complete',(e,msg)=>{
            this.handleSuccess(msg);
            this.notDownloaded = false;
+           this.onDownload = false;
+           this.precentage = 0;
+           this.total = 0;
+           this.downloaded = 0;
            if(this.merge){
                this.handleMerge();
            }
@@ -110,7 +123,7 @@ export default {
         ipcRenderer.on('Merge-complete',(e,msg)=>{
             this.handleSuccess(msg);
         })
-        ipcRenderer.on('download-progress',(e,res)=>{
+        ipcRenderer.on('downloading',(e,res)=>{
             this.displayPercentage(res[0],res[1]);
         })
         ipcRenderer.on('Error',(e,msg)=>{

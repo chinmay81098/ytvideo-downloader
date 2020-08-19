@@ -51,15 +51,13 @@ function downloadAll(e, pathToAll, urlList) {
   var videoList = [];
   var videoTitle = [];
   var downloadComplete = 0;
-  var vidNo = 0;
   urlList.forEach((url) => {
     videoList[url] = ytdl(url);
-    var path = pathToAll + `abc${vidNo++}.mp4`;
-    vidList.push(path);
-    videoList[url].pipe(fs.createWriteStream(path));
+    var videoPath = pathToAll + `${path.parse(url).name.split('=')[1]}.mp4`;
+    vidList.push(videoPath);
+    videoList[url].pipe(fs.createWriteStream(videoPath));
     videoList[url].on("progress", (chunkLength, downloaded, total) => {
-      const percent = downloaded / total;
-      console.log("downloading", `${(percent * 100).toFixed(1)}%`);
+      e.sender.send('downloading',[downloaded,total])
     });
     videoList[url].on("end", () => {
       downloadComplete++;
@@ -74,7 +72,6 @@ function downloadAll(e, pathToAll, urlList) {
 }
 
 ipcMain.on("download-all", (e, urlList) => {
-  console.log("download");
   if (!fs.existsSync(pathToAll)) {
     fs.mkdirSync(pathToAll);
   }
@@ -82,9 +79,9 @@ ipcMain.on("download-all", (e, urlList) => {
 });
 
 ipcMain.on("merge", (e, arg) => {
-  console.log("merge");
   if (!fs.existsSync(pathToMerged)) {
     fs.mkdirSync(pathToMerged);
   }
   mergeVideos(vidList, pathToMerged, e);
 });
+
