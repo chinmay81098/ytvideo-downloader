@@ -22,8 +22,8 @@ if (!fs.existsSync("intermediate")) {
 
 async function mergeVideos(e,inputVideos, pathToMerged) {
 
-  if (!fs.existsSync(pathToAll)){
-    fs.mkdirSync(pathToAll);
+  if (!fs.existsSync(pathToMerged)){
+    fs.mkdirSync(pathToMerged);
   }
   var res = {};
   var ffmpeger = "";
