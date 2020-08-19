@@ -8,18 +8,24 @@ var vidList = [];
 if (require("os").platform() === "win32") {
   const pathToDownloads = `${process.env.HOME}\\Downloads`;
   var pathToAll = `${pathToDownloads}\\YTvideo2\\`;
-  var pathToMerged = `${pathToDownloads}\\YTvideoMerged2/`;
+  var pathToMerged = `${pathToAll}\\YTvideoMerged2/`;
 } else {
   const pathToDownloads = `${process.env.HOME}/Downloads`;
   var pathToAll = `${pathToDownloads}/YTvideo1/`;
-  var pathToMerged = `${pathToDownloads}/YTvideoMerged1/`;
+  var pathToMerged = `${pathToAll}/YTvideoMerged1/`;
 }
 
 if (!fs.existsSync("intermediate")) {
   fs.mkdirSync("intermediate");
 }
 
-async function mergeVideos(inputVideos, pathToMerged, e) {
+
+async function mergeVideos(e,inputVideos, pathToMerged) {
+
+  if (!fs.existsSync(pathToAll)){
+    fs.mkdirSync(pathToAll);
+  }
+  var res = {};
   var ffmpeger = "";
   ffmpeger = inputVideos
     .map(
@@ -37,51 +43,79 @@ async function mergeVideos(inputVideos, pathToMerged, e) {
   var outputName = inputVideos.map((video) => path.parse(video).name).join("+");
   var mergecmd = `${ffmpeg} -y -i ${concatenator} -c copy -bsf:a aac_adtstoasc ${pathToMerged}${outputName}.mp4`;
   exec(`${ffmpeger} && ${mergecmd}`, (err, stdout, stderr) => {
-    if (err) {
-      console.log(err);
-      e.sender.send("Error", "Error while merging");
-      return;
-    }
-    e.sender.send("Merge-complete", "All videos merged successfuly");
+    res.error = err ? true : false;
+    res.downloaded = true
+    res.msg = res.error ? "Downloaded Successfully. Error while merging" :"Download and Merge Successful"
+    e.sender.send("download-process", res);
   });
 }
 
-function downloadAll(e, pathToAll, urlList) {
-  let videoId = [];
+function downloadAll(e,urlList,performMerge) {
   var videoList = [];
-  var videoTitle = [];
   var downloadComplete = 0;
-  urlList.forEach((url) => {
+  urlList.forEach((item) => {
+    let url = item[0];
+    let videoPath = item[1];
     videoList[url] = ytdl(url);
-    var videoPath = pathToAll + `${path.parse(url).name.split('=')[1]}.mp4`;
-    vidList.push(videoPath);
     videoList[url].pipe(fs.createWriteStream(videoPath));
     videoList[url].on("progress", (chunkLength, downloaded, total) => {
       e.sender.send('downloading',[downloaded,total])
     });
     videoList[url].on("end", () => {
       downloadComplete++;
-      if (downloadComplete == urlList.length) {
-        e.sender.send(
-          "download-complete",
-          `Downloaded ${urlList.length} videos successfuly`
-        );
+      if (downloadComplete === urlList.length) {
+        if(performMerge){
+            mergeVideos(e,vidList,pathToMerged)
+        }
+        else{
+          e.sender.send(
+            "download-process",
+            { 
+              error:false,
+              downloaded:true,
+              msg:`Downloaded ${downloadComplete} videos successfuly`
+            }
+          );
+        }
       }
     });
   });
 }
 
-ipcMain.on("download-all", (e, urlList) => {
+ipcMain.on("download-all", (e, data) => {
   if (!fs.existsSync(pathToAll)) {
     fs.mkdirSync(pathToAll);
   }
-  downloadAll(e, pathToAll, urlList);
+  vidList = []
+  var cleanUrlList = data.urlList.map((url)=>{
+    var videoId = ytdl.getURLVideoID(url)
+    var videoPath = pathToAll + `${videoId}.mp4`;
+    vidList.push(videoPath)
+    if(!fs.existsSync(videoPath)){
+      return [url,videoPath];
+    }
+  }).filter(item=> !!item);
+
+  if(cleanUrlList.length === 0){
+    e.sender.send(
+      'download-process',
+      { 
+        error:false,
+        downloaded:false,
+        msg: data.merge?'Videos already downloaded. No merge performed':'Videos already downloaded'
+      }
+    );
+  }
+  else{
+    downloadAll(e,cleanUrlList,data.merge);
+  }
+
 });
 
-ipcMain.on("merge", (e, arg) => {
+/*ipcMain.on("merge", (e, arg) => {
   if (!fs.existsSync(pathToMerged)) {
     fs.mkdirSync(pathToMerged);
   }
   mergeVideos(vidList, pathToMerged, e);
-});
+});*/
 

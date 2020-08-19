@@ -17,13 +17,14 @@
                         <CTextarea
                         required
                         label="Paste URL's Here"
-                        :placeholder="sampleURL"
+                        :placeholder="inputFormat"
                         rows=10
                         v-model="urls"
                         />
                         <CInputCheckbox
                         label="Merge all after download"
                         :checked.sync="merge"
+                        :disabled="onClickDownload"
                         />
                     </CCardBody>
                     <CCardFooter v-if="onDownload">
@@ -41,15 +42,15 @@
                 </CCard>
             </CCol>
             <CCol sm="6">
-                <CButton color="primary" @click="handleDownload">
+                <CButton color="primary" :disabled="onClickDownload" @click="handleDownload">
                     Download
                 </CButton>
             </CCol>
-            <CCol sm="6">
+            <!--CCol sm="6">
                 <CButton color="primary" @click="handleMerge" :disabled="notDownloaded">
                     Merge
                 </CButton>
-            </CCol>
+            </CCol-->
         </CRow>
     </CContainer>
 </template>
@@ -68,9 +69,10 @@ export default {
             precentage:0,
             ratio:0,
             onDownload:false,
+            onClickDownload:false,
             total:0,
             downloaded:0,
-            sampleURL:`//https://www.youtube.com/watch?v=1TR9riaDzY8,https://www.youtube.com/watch?v=d-UU_lyqcFg,https://www.youtube.com/watch?v=Uw5JOtvFd-k`
+            inputFormat:'input format :[url 1,url 2,url 3] without square brackets'
         }
     },
     methods:{
@@ -88,13 +90,13 @@ export default {
                 this.message = "Invalid URL's"
             }
             else{
-                this.onDownload = true;
-                ipcRenderer.send('download-all',filteredUrlList)
+                this.onClickDownload = true;
+                ipcRenderer.send('download-all',{urlList:filteredUrlList,merge:this.merge})
             }
         },
-        handleMerge(){
+        /*handleMerge(){
             ipcRenderer.send('merge')
-        },
+        },*/
         displayPercentage(bytes_downloaded,bytes_total){
             this.ratio = (this.downloaded+bytes_downloaded)/(this.total+bytes_total)
             this.precentage = Math.round(this.ratio*100,2);
@@ -103,33 +105,46 @@ export default {
                 this.total+=bytes_total
             }
         },
-        handleSuccess(msg){
+        callbackDownload(response){
+            if(response.error!=true){
+                if(response.downloaded){
+                    this.onDownload = false;
+                    this.precentage = 0;
+                    this.total = 0;
+                    this.downloaded = 0;
+                }
+            }
+            else if(response.error && response.downloaded){
+                this.onDownload = false;
+                this.precentage = 0;
+                this.total = 0;
+                this.downloaded = 0;
+            }
             this.fixedToasts++;
-            this.message = msg;
+            this.message = response.msg;
+            this.onClickDownload = false;
         }
     },
     mounted(){
-        ipcRenderer.on('download-complete',(e,msg)=>{
-           this.handleSuccess(msg);
-           this.notDownloaded = false;
-           this.onDownload = false;
-           this.precentage = 0;
-           this.total = 0;
-           this.downloaded = 0;
-           if(this.merge){
-               this.handleMerge();
-           }
+        ipcRenderer.on('download-process',(e,response)=>{
+           this.callbackDownload(response);
         })
-        ipcRenderer.on('Merge-complete',(e,msg)=>{
-            this.handleSuccess(msg);
+        /*ipcRenderer.on('Merge-complete',(e,msg)=>{
+            this.fixedToasts++;
+            this.message = msg;
+            this.onClickDownload = false;
+        })*/
+        ipcRenderer.once('downloading',()=>{
+            this.onDownload = true;
         })
         ipcRenderer.on('downloading',(e,res)=>{
             this.displayPercentage(res[0],res[1]);
         })
-        ipcRenderer.on('Error',(e,msg)=>{
+        /*ipcRenderer.on('Error',(e,msg)=>{
             this.fixedToasts++;
             this.message = msg;
-        })
+            this.onClickDownload = false;
+        })*/
     }
 }
 </script>
