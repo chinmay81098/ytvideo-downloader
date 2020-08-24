@@ -18,6 +18,7 @@ if (require("os").platform() === "win32") {
   var pathToMerged = `${pathToAll}/YTvideoMerged/`;
 }
 
+
 if (!fs.existsSync("intermediate")) {
   fs.mkdirSync("intermediate");
 }
@@ -82,8 +83,11 @@ function downloadAll(e, urlList, performMerge) {
 }
 
 ipcMain.on("download-all", (e, data) => {
-  if (!fs.existsSync(pathToAll)) {
-    fs.mkdirSync(pathToAll);
+  if (!fs.existsSync(pathToDownloads)) {
+    fs.mkdirSync(pathToDownloads);
+    if(!fs.existsSync(pathToAll)){
+      fs.mkdirSync(pathToAll)
+    }
   }
   vidList = [];
   var cleanUrlList = data.urlList
